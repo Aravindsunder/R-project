@@ -57,8 +57,7 @@ c <- cutree(hc, k=4)
 (b) 
 
 ```{r}
-partition_summary <- sumPartition(a,c)
-cluster_center <- k$centers
+partition_summary <- sumPartition(alcohol,c)
 
 # Composition for cluster 1 has high SAG,V,logPCP,RM,Mass values. This indicates chemical composition for cluster 1 has high chemical composition.
 
@@ -114,13 +113,6 @@ rownames(wscores) <- w$Country
 (a) 
 
 ```{r}
-w <- read.csv(here::here("hwk", "Data","worldhappiness2019.csv"))
-
-names(w)<- c( "Rank", "Country", "Score", "GDP", "Family", 
-              "Life", "Freedom", "Generosity", "Trust")
-wscores <- w[,-c(1:3)]
-rownames(wscores) <- w$Country
-
 
 d <- dist(wscores, method ="euclidean")
 hc <- hclust(d, method = "average")
@@ -144,8 +136,6 @@ cluster_counts <- table(clusters)
 
 ireland_cluster <- clusters["Ireland"]
 india_cluster <- clusters["India"]
-cat("Cluster for Ireland:", ireland_cluster, "\n")
-cat("Cluster for India:", india_cluster, "\n")
 
 
 source(here::here("hwk", "h1code.R"))
@@ -156,7 +146,6 @@ family_means <- aggregate(wscores$Family, by = list(cluster = clusters), FUN = m
 
 
 highest_family_cluster <- family_means$cluster[which.max(family_means$x)]
-cat("Cluster with the highest Family score:", highest_family_cluster, "\n")
 
 overall_means <- aggregate(rowMeans(wscores), by = list(cluster = clusters), FUN = mean)
 
@@ -211,8 +200,8 @@ cluster_counts
 dist_centroid <- sqrt(rowSums((wscores[, 1:6] - kmeans_result$centers[kmeans_result$cluster, ])^2))
 
 
-outlier <- quantile(dist_to_centroid, 0.95)
-outlier_countries <- rownames(wscores)[dist_to_centroid > outlier]
+outlier <- quantile(dist_centroid, 0.95)
+outlier_countries <- rownames(wscores)[dist_centroid > outlier]
 outlier_countries
 
 ```
