@@ -1,0 +1,248 @@
+---
+title: "Assignment 1 ST404/ST644"
+author: "Aravind Singaravelan 24251247"
+date: "`r format(Sys.time(), '%X %d %B, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=4, fig.height=4)
+```
+
+Packages you will need. You only need the install once only. After that delete this code block. You will not need to install the packages on the server.
+
+```{r, eval=FALSE}
+install.packages("tidyverse") # do not need this on server
+install.packages("GGally") # do not need this on server
+install.packages("cluster") # do not need this on server
+install.packages("robustbase") # do not need this on server
+install.packages("here")
+```
+
+```{r, eval=T, echo=FALSE}
+suppressMessages(library(tidyverse))
+suppressMessages(library(ggplot2))
+suppressMessages(library(GGally))
+suppressMessages(library(cluster))
+
+```
+
+#### Question 2
+
+```{r eval=F}
+# change to eval=T
+
+data(alcohol, package="robustbase")
+alcohol <- alcohol[,-7]
+source(here::here("hwk",'h1code.R')) # place h1code.R in your hwk folder
+```
+
+(a,fig.width=8)
+
+```{r}
+s <- scale(alcohol)
+
+d <- dist(alcohol, method= "euclidean")
+
+hc <- hclust(d, method ="average")
+
+plot(as.dendrogram(hc))
+c <- cutree(hc, k=4)
+
+
+```
+
+(b) 
+
+```{r}
+partition_summary <- sumPartition(a,c)
+cluster_center <- k$centers
+
+# Composition for cluster 1 has high SAG,V,logPCP,RM,Mass values. This indicates chemical composition for cluster 1 has high chemical composition.
+
+
+```
+
+
+(c) 
+
+```{r}
+a <- alcohol
+set.seed(123)
+k <- kmeans(a, centers=4)
+table(k$cluster)
+
+```
+
+(d) 
+
+```{r}
+sil_kmeans <- silhouette(k$cluster, d)
+plot(sil_kmeans, main = "Silhouette Plot for k-means Clustering", col = 1:4, border = NA)
+
+
+avg_sil_width_kmeans <- mean(sil_kmeans[, "sil_width"])
+cat("Average Silhouette Width for k-means:", avg_sil_width_kmeans, "\n")
+
+
+clusters_avg_linkage <- cutree(hc, k = 4)
+sil_avg_linkage <- silhouette(clusters_avg_linkage, d)
+plot(sil_avg_linkage, main = "Silhouette Plot for Average Linkage Clustering", col = 1:4, border = NA)
+
+
+avg_sil_width_avg_linkage <- mean(sil_avg_linkage[, "sil_width"])
+cat("Average Silhouette Width for Average Linkage:", avg_sil_width_avg_linkage, "\n")
+
+
+```
+
+#### Question 4
+
+```{r eval=F}
+# change to eval=T
+
+w <- read.csv(here::here("hwk", "Data","worldhappiness2019.csv"))
+
+names(w)<- c( "Rank", "Country", "Score", "GDP", "Family", 
+              "Life", "Freedom", "Generosity", "Trust")
+wscores <- w[,-c(1:3)]
+rownames(wscores) <- w$Country
+```
+
+(a) 
+
+```{r}
+w <- read.csv(here::here("hwk", "Data","worldhappiness2019.csv"))
+
+names(w)<- c( "Rank", "Country", "Score", "GDP", "Family", 
+              "Life", "Freedom", "Generosity", "Trust")
+wscores <- w[,-c(1:3)]
+rownames(wscores) <- w$Country
+
+
+d <- dist(wscores, method ="euclidean")
+hc <- hclust(d, method = "average")
+plot(hc, main = "Dendrogram of Countries (Average Linkage)", 
+     xlab = "", sub = "", cex = 0.8, hang = -1)
+
+
+#yes there are outliers , such as central African republic and Afghanistan has long branch that connects to the main branch
+
+```
+
+(b) 
+
+```{r}
+clusters <- cutree(hc, k = 3)
+
+# Count the number of countries in each cluster
+cluster_counts <- table(clusters)
+
+
+
+ireland_cluster <- clusters["Ireland"]
+india_cluster <- clusters["India"]
+cat("Cluster for Ireland:", ireland_cluster, "\n")
+cat("Cluster for India:", india_cluster, "\n")
+
+
+source(here::here("hwk", "h1code.R"))
+sumPartition(wscores, clusters)
+
+
+family_means <- aggregate(wscores$Family, by = list(cluster = clusters), FUN = mean)
+
+
+highest_family_cluster <- family_means$cluster[which.max(family_means$x)]
+cat("Cluster with the highest Family score:", highest_family_cluster, "\n")
+
+overall_means <- aggregate(rowMeans(wscores), by = list(cluster = clusters), FUN = mean)
+
+highest_overall_cluster <- overall_means$cluster[which.max(overall_means$x)]
+
+
+```
+
+(c) 
+
+```{r, fig.width=10, fig.height=6}
+par(mar=c(10,2,2,2))
+
+
+wscores$Cluster <- as.factor(clusters)
+
+
+ggparcoord(wscores,
+           columns = 1:6,
+           groupColumn = "Cluster",  
+           scale = "uniminmax",
+           alphaLines = 0.6,
+           title = "Parallel Coordinate Plot of Scores Colored by Clusters") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+lowest_scoring_cluster <- overall_means$cluster[which.min(overall_means$x)]
+
+lowest_cluster_data <- wscores[wscores$Cluster == lowest_scoring_cluster, ]
+
+
+outliers <- wscores[apply(wscores[, 1:6], 1, function(x) any(x > 3 | x < -3)), ]
+
+rownames(outliers)
+
+
+```
+
+(d) 
+
+```{r}
+set.seed(123)
+
+kmeans_result <- kmeans(wscores[, 1:6], centers = 3, nstart = 10)
+
+wscores$Cluster_kmeans <- kmeans_result$cluster
+
+cluster_counts <- table(kmeans_result$cluster)
+cluster_counts
+
+dist_centroid <- sqrt(rowSums((wscores[, 1:6] - kmeans_result$centers[kmeans_result$cluster, ])^2))
+
+
+outlier <- quantile(dist_to_centroid, 0.95)
+outlier_countries <- rownames(wscores)[dist_to_centroid > outlier]
+outlier_countries
+
+```
+
+(e) 
+
+```{r, fig.width=8}
+
+wscores$Cluster_kmeans <- as.factor(kmeans_result$cluster)
+
+
+ggparcoord(wscores,
+           columns = 1:6,
+           groupColumn = "Cluster_kmeans",
+           scale = "uniminmax",  
+           alphaLines = 0.6,  
+           title = "Parallel Coordinate Plot of Scores Colored by k-means Clusters") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+family_means <- aggregate(wscores$Family, by = list(Cluster = wscores$Cluster_kmeans), FUN = mean)
+
+highest_family_cluster <- family_means$Cluster[which.max(family_means$x)]
+
+
+overall_means <- aggregate(rowMeans(wscores[, 1:6]), by = list(Cluster = wscores$Cluster_kmeans), FUN = mean)
+
+highest_overall_cluster <- overall_means$Cluster[which.max(overall_means$x)]
+
+
+
+```
